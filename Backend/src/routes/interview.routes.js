@@ -40,11 +40,12 @@ interviewRouter.get(
 );
 
 /**
- * @route GET /api/interview/resume/pdf
- * @description generate resume pdf on the basis of user self description, resume content and job description.
+ * @route GET /api/interview/resume/pdf/:interviewReportId
+ * @description generate resume pdf on the basis of report ID
  * @access private
  */
-interviewRouter.post(
+interviewRouter.get(
+  // CHANGED FROM .post TO .get
   "/resume/pdf/:interviewReportId",
   authMiddleware.authUser,
   interviewController.generateResumePdfController,
