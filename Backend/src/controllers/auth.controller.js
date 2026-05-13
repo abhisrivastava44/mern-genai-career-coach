@@ -7,7 +7,7 @@ const otpModel = require("../models/otp.model");
 
 /**
  * @name sendOtpController
- * @description Generates and sends OTP, clearing previous ones first.
+ * @description Generates and sends OTP using production-ready transporter settings.
  */
 async function sendOtpController(request, response) {
   const { email } = request.body;
@@ -16,7 +16,7 @@ async function sendOtpController(request, response) {
     return response.status(400).json({ message: "Email is required" });
   }
 
-  const isUserExists = await userModel.findOne({ email });
+  const isUserExists = await userModel.findOne({ email: email.toLowerCase() });
   if (isUserExists) {
     return response.status(400).json({ message: "Email already registered" });
   }
@@ -28,26 +28,41 @@ async function sendOtpController(request, response) {
     await otpModel.deleteMany({ email: email.toLowerCase() });
     await otpModel.create({ email: email.toLowerCase(), otp });
 
+    // PRODUCTION TRANSPORTER: Using Port 465 and SSL
     const transporter = nodemailer.createTransport({
-      service: "gmail",
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true, // Use SSL for production stability
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
+      tls: {
+        rejectUnauthorized: false, // Prevents self-signed certificate errors on cloud hosts
+      },
     });
 
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: `"CareerCoach Support" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: "Your CareerCoach Verification Code",
-      html: `<h2>Your verification code is: <b style="color: #ff2d78;">${otp}</b></h2>`,
+      html: `
+        <div style="font-family: Arial, sans-serif; text-align: center; padding: 20px; background-color: #f4f4f4;">
+          <h2 style="color: #333;">Welcome to CareerCoach!</h2>
+          <p style="font-size: 16px; color: #555;">Use the code below to verify your email:</p>
+          <h1 style="color: #ff2d78; font-size: 40px; letter-spacing: 5px;">${otp}</h1>
+          <p style="color: #888;">This code will expire shortly.</p>
+        </div>
+      `,
     };
 
     await transporter.sendMail(mailOptions);
     response.status(200).json({ message: "OTP sent successfully" });
   } catch (error) {
-    console.error("OTP Error:", error);
-    response.status(500).json({ message: "Failed to send OTP" });
+    console.error("OTP Error Details:", error); // Logs actual error in Render console
+    response
+      .status(500)
+      .json({ message: "Failed to send OTP. Check server logs." });
   }
 }
 
