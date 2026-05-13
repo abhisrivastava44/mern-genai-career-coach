@@ -61,13 +61,15 @@ async function sendOtpController(request, response) {
     };
 
     console.log(`DEBUG: OTP for ${email} is ${otp}`);
-    await transporter.sendMail(mailOptions);
     response.status(200).json({ message: "OTP sent successfully" });
+    transporter.sendMail(mailOptions).catch((err) => {
+      console.error("Background Email Error:", err);
+    });
   } catch (error) {
     console.error("OTP Error Details:", error);
-    response
-      .status(500)
-      .json({ message: "Failed to send OTP. Check server logs." });
+    if (!response.headersSent) {
+      response.status(500).json({ message: "Failed to process OTP request." });
+    }
   }
 }
 
