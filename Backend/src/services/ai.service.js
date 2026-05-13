@@ -67,12 +67,24 @@ Job Description: ${jobDescription}`;
 }
 
 async function generatePdfFromHtml(htmlContent) {
-  const browser = await puppeteer.launch();
+  // Add these arguments to fix the Render/Linux crash
+  const browser = await puppeteer.launch({
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--single-process",
+    ],
+    // This uses the path provided by the Render environment if available
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null,
+  });
+
   const page = await browser.newPage();
   await page.setContent(htmlContent, { waitUntil: "networkidle0" });
 
   const pdfBuffer = await page.pdf({
     format: "A4",
+    printBackground: true, // Ensures CSS colors/images appear in the PDF
     margin: {
       top: "20mm",
       bottom: "20mm",
@@ -82,7 +94,6 @@ async function generatePdfFromHtml(htmlContent) {
   });
 
   await browser.close();
-
   return pdfBuffer;
 }
 
