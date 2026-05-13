@@ -151,7 +151,12 @@ async function loginUserController(request, response) {
     { expiresIn: "1d" },
   );
 
-  response.cookie("token", token);
+  response.cookie("token", token, {
+    httpOnly: true,
+    secure: true, // Required for cross-site cookies
+    sameSite: "none", // Required for cross-site cookies
+    maxAge: 24 * 60 * 60 * 1000, // 1 day
+  });
   response.status(200).json({
     message: "User loggedIn successfully",
     username: user.username,
