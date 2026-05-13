@@ -39,6 +39,11 @@ async function sendOtpController(request, response) {
       tls: {
         rejectUnauthorized: false, // Critical for cloud host handshakes
       },
+      // ADD THIS LINE TO FIX ENETUNREACH
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      dnsTimeout: 10000,
+      family: 4, // Forces IPv4
     });
 
     const mailOptions = {
