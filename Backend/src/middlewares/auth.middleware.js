@@ -1,0 +1,34 @@
+const jwt = require("jsonwebtoken");
+const tokenBlacklistModel = require("../models/blacklist.model");
+
+async function authUser(request, response, next) {
+  const token = request.cookies.token;
+
+  if (!token) {
+    return response.status(401).json({
+      message: "Token not provided.",
+    });
+  }
+
+  const isTokenBlackListed = await tokenBlacklistModel.findOne({
+    token,
+  });
+
+  if (isTokenBlackListed) {
+    return response.status(401).json({
+      message: "Token is invalid.",
+    });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    request.user = decoded;
+    next();
+  } catch (error) {
+    return response.status(401).json({
+      message: "Invalid token",
+    });
+  }
+}
+
+module.exports = { authUser };
