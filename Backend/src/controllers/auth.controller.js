@@ -7,7 +7,7 @@ const otpModel = require("../models/otp.model");
 
 /**
  * @name sendOtpController
- * @description Generates and sends OTP using production-ready transporter settings.
+ * @description Generates and sends OTP using Port 587 (STARTTLS) for cloud compatibility.
  */
 async function sendOtpController(request, response) {
   const { email } = request.body;
@@ -24,21 +24,20 @@ async function sendOtpController(request, response) {
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
   try {
-    // CLEANUP: Ensure no old OTPs exist
     await otpModel.deleteMany({ email: email.toLowerCase() });
     await otpModel.create({ email: email.toLowerCase(), otp });
 
-    // PRODUCTION TRANSPORTER: Using Port 465 and SSL
+    // UPDATED TRANSPORTER: Switching to Port 587
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
-      port: 465,
-      secure: true, // Use SSL for production stability
+      port: 587,
+      secure: false, // Must be false for Port 587
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
       tls: {
-        rejectUnauthorized: false, // Prevents self-signed certificate errors on cloud hosts
+        rejectUnauthorized: false, // Critical for cloud host handshakes
       },
     });
 
@@ -56,10 +55,11 @@ async function sendOtpController(request, response) {
       `,
     };
 
+    console.log(`DEBUG: OTP for ${email} is ${otp}`);
     await transporter.sendMail(mailOptions);
     response.status(200).json({ message: "OTP sent successfully" });
   } catch (error) {
-    console.error("OTP Error Details:", error); // Logs actual error in Render console
+    console.error("OTP Error Details:", error);
     response
       .status(500)
       .json({ message: "Failed to send OTP. Check server logs." });
