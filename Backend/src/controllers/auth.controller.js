@@ -119,7 +119,12 @@ async function registerUserController(request, response) {
       { expiresIn: "1d" },
     );
 
-    response.cookie("token", token);
+    response.cookie("token", token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      maxAge: 24 * 60 * 60 * 1000,
+    });
     response.status(201).json({
       message: "User registered successfully",
       user: { id: user._id, username: user.username, email: user.email },

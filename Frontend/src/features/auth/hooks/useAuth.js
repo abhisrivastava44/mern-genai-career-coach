@@ -36,6 +36,7 @@ export const useAuth = () => {
 
       if (data && data.user) {
         setUser({ username: data.user.username, email: data.user.email });
+        return { success: true };
       }
     } catch (error) {
       console.error("Registration failed:", error);
