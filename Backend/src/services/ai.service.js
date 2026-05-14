@@ -76,7 +76,7 @@ async function generatePdfFromHtml(htmlContent) {
       "--single-process",
     ],
     // This uses the path provided by the Render environment if available
-    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null,
+    executablePath: null,
   });
 
   const page = await browser.newPage();
