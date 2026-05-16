@@ -98,12 +98,13 @@ async function generateResumePdfController(req, res) {
     selfDescription,
   });
 
-  res.set({
-    "Content-Type": "application/pdf",
-    "Content-Disposition": `attachment; filename=resume_${interviewReportId}.pdf`,
-  });
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename=resume_${interviewReportId}.pdf`,
+  );
 
-  res.send(pdfBuffer);
+  return res.send(pdfBuffer);
 }
 
 module.exports = {

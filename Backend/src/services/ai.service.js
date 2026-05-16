@@ -123,9 +123,32 @@ The resume should be tailored for the given job description. Use inline CSS. Mak
   });
 
   const jsonContent = JSON.parse(response.choices[0].message.content);
-  console.log("=== GROQ GENERATED HTML CONTENT ===", jsonContent.html);
-  const pdfBuffer = await generatePdfFromHtml(jsonContent.html);
+  let rawHtml = jsonContent.html;
+  const printStyleOverride = `
+    <style>
+      *, body, div, p, span, h1, h2, h3, h4, h5, h6, li {
+        color: #000000 !important;
+        background-color: #ffffff !important;
+      }
+      body {
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+    </style>
+  `;
 
+  if (rawHtml.includes("</head>")) {
+    rawHtml = rawHtml.replace("</head>", `${printStyleOverride}</head>`);
+  } else if (rawHtml.includes("<body>")) {
+    rawHtml = rawHtml.replace(
+      "<body>",
+      `<head>${printStyleOverride}</head><body>`,
+    );
+  }
+
+  const pdfBuffer = await generatePdfFromHtml(rawHtml);
   return pdfBuffer;
 }
 
