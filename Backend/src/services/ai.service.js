@@ -123,6 +123,7 @@ The resume should be tailored for the given job description. Use inline CSS. Mak
   });
 
   const jsonContent = JSON.parse(response.choices[0].message.content);
+  console.log("=== GROQ GENERATED HTML CONTENT ===", jsonContent.html);
   const pdfBuffer = await generatePdfFromHtml(jsonContent.html);
 
   return pdfBuffer;
