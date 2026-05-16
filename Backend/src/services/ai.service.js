@@ -5,6 +5,9 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
+/**
+ * @description Generates a structured career/interview coaching report from Groq
+ */
 async function generateInterviewReport({
   resume,
   selfDescription,
@@ -15,7 +18,6 @@ Resume: ${resume}
 Self Description: ${selfDescription}
 Job Description: ${jobDescription}`;
 
-  // We use a literal template here because Llama-3 understands this much better than Zod schemas
   const expectedStructure = {
     matchScore: 85,
     title: "Job Title",
@@ -66,8 +68,10 @@ Job Description: ${jobDescription}`;
   return JSON.parse(response.choices[0].message.content);
 }
 
+/**
+ * @description Initializes Puppeteer instance locally to compile raw HTML text layouts into PDFs
+ */
 async function generatePdfFromHtml(htmlContent) {
-  // Add these arguments to fix the Render/Linux crash
   const browser = await puppeteer.launch({
     args: [
       "--no-sandbox",
@@ -75,7 +79,6 @@ async function generatePdfFromHtml(htmlContent) {
       "--disable-dev-shm-usage",
       "--single-process",
     ],
-    // This uses the path provided by the Render environment if available
     executablePath: null,
   });
 
@@ -83,6 +86,7 @@ async function generatePdfFromHtml(htmlContent) {
   await page.setContent(htmlContent, { waitUntil: "domcontentloaded" });
   await page.waitForSelector("body", { visible: true });
 
+  // Native injection safely overrides dark-themed text or transparency styles
   await page.addStyleTag({
     content: `
       html, body {
@@ -96,9 +100,10 @@ async function generatePdfFromHtml(htmlContent) {
       }
     `,
   });
+
   const pdfBuffer = await page.pdf({
     format: "A4",
-    printBackground: true, // Ensures CSS colors/images appear in the PDF
+    printBackground: true,
     margin: {
       top: "20mm",
       bottom: "20mm",
@@ -111,6 +116,9 @@ async function generatePdfFromHtml(htmlContent) {
   return pdfBuffer;
 }
 
+/**
+ * @description Prompts Groq to tailor an HTML resume, sanitizes output blocks, and hands off to PDF compiler
+ */
 async function generateResumePdf({ resume, selfDescription, jobDescription }) {
   const prompt = `Generate resume for a candidate with the following details:
 Resume: ${resume}
@@ -135,9 +143,46 @@ The resume should be tailored for the given job description. Use inline CSS. Mak
     response_format: { type: "json_object" },
   });
 
-  const jsonContent = JSON.parse(response.choices[0].message.content);
-  let cleanHtml = jsonContent.html;
+  const rawResponseText = response.choices[0].message.content;
+  let cleanHtml = "";
+
+  try {
+    const jsonContent = JSON.parse(rawResponseText);
+    cleanHtml = jsonContent.html || "";
+  } catch (parseError) {
+    console.error(
+      "Fallback parsing triggered. Recovering raw HTML layout tags...",
+      parseError,
+    );
+    // FALLBACK PROTECTION: If JSON formatting breaks, parse whatever sits between the <html> tags directly
+    const htmlMatch = rawResponseText.match(/<html>[\s\S]*<\/html>/i);
+    if (htmlMatch) {
+      cleanHtml = htmlMatch[0];
+    }
+  }
+
+  // Clear markdown code blocks or edge case backticks
   cleanHtml = cleanHtml.replace(/^```html\s*|```$/g, "").trim();
+
+  // EMERGENCY FALLBACK: If the payload is empty, generate a structural template using the profile variables
+  if (!cleanHtml || cleanHtml.length < 50) {
+    console.warn(
+      "Using fallback baseline view template to prevent empty page generation.",
+    );
+    cleanHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head><title>Resume</title></head>
+        <body style="font-family: Arial, sans-serif; padding: 30px; color: #000000; background-color: #ffffff;">
+          <h1 style="text-align: center; margin-bottom: 5px;">Resume Document</h1>
+          <hr style="border: 1px solid #2a3348; margin-bottom: 20px;" />
+          <h3>Profile Overview</h3>
+          <p style="white-space: pre-wrap; line-height: 1.6;">${selfDescription || "Profile structure parsing completed."}</p>
+        </body>
+      </html>
+    `;
+  }
+
   const pdfBuffer = await generatePdfFromHtml(cleanHtml);
   return pdfBuffer;
 }
