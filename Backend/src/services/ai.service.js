@@ -80,7 +80,8 @@ async function generatePdfFromHtml(htmlContent) {
   });
 
   const page = await browser.newPage();
-  await page.setContent(htmlContent, { waitUntil: "networkidle0" });
+  await page.setContent(htmlContent, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector("body", { visible: true });
 
   const pdfBuffer = await page.pdf({
     format: "A4",
