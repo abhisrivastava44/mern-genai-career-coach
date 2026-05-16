@@ -83,6 +83,19 @@ async function generatePdfFromHtml(htmlContent) {
   await page.setContent(htmlContent, { waitUntil: "domcontentloaded" });
   await page.waitForSelector("body", { visible: true });
 
+  await page.addStyleTag({
+    content: `
+      html, body {
+        background-color: #ffffff !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+      }
+      h1, h2, h3, h4, h5, h6, p, span, li, a, div, strong, em {
+        color: #000000 !important;
+        background-color: transparent !important;
+      }
+    `,
+  });
   const pdfBuffer = await page.pdf({
     format: "A4",
     printBackground: true, // Ensures CSS colors/images appear in the PDF
@@ -112,7 +125,7 @@ The resume should be tailored for the given job description. Use inline CSS. Mak
     messages: [
       {
         role: "system",
-        content: `You are an expert resume writer. Output ONLY a valid JSON object matching this exact structure: { "html": "<html>...</html>" }. Do not use markdown wrapping.`,
+        content: `You are an expert resume writer. Output ONLY a valid JSON object matching this exact structure: { "html": "<html>...</html>" }. Crucial: The string value inside the "html" key must contain raw HTML text only, with NO markdown code block wrappers (do not use \`\`\`html).`,
       },
       {
         role: "user",
@@ -123,32 +136,9 @@ The resume should be tailored for the given job description. Use inline CSS. Mak
   });
 
   const jsonContent = JSON.parse(response.choices[0].message.content);
-  let rawHtml = jsonContent.html;
-  const printStyleOverride = `
-    <style>
-      *, body, div, p, span, h1, h2, h3, h4, h5, h6, li {
-        color: #000000 !important;
-        background-color: #ffffff !important;
-      }
-      body {
-        width: 100%;
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-    </style>
-  `;
-
-  if (rawHtml.includes("</head>")) {
-    rawHtml = rawHtml.replace("</head>", `${printStyleOverride}</head>`);
-  } else if (rawHtml.includes("<body>")) {
-    rawHtml = rawHtml.replace(
-      "<body>",
-      `<head>${printStyleOverride}</head><body>`,
-    );
-  }
-
-  const pdfBuffer = await generatePdfFromHtml(rawHtml);
+  let cleanHtml = jsonContent.html;
+  cleanHtml = cleanHtml.replace(/^```html\s*|```$/g, "").trim();
+  const pdfBuffer = await generatePdfFromHtml(cleanHtml);
   return pdfBuffer;
 }
 
